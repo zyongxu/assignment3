@@ -1,0 +1,10 @@
+.metadata
+*/.settings
+*/.classpath
+*/.project
+*/.swp
+bin
+Servers
+*.class
+*.pyc
+*.jar
