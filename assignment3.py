@@ -12,6 +12,23 @@ class MainPage(webapp2.RequestHandler):
 		self.response.out.write("""
           <html>
           <body>
+			<h2>Welcome!</h2>
+			 This is assignment3 for Columbia Univ 6998 Cloud Computing. By Kina Winoto (ksw2123) and Yongxu Zhang (yz2419).</br>
+			 It is built using Google App Engine, Python SDK. 
+			 Note that the assignment specification was a little vague and where there was ambiguity, we made our own decisions.</br>
+			 Thus, here's a little about it to clear up some confusion: </br>
+				Enter a topic below. </br>
+				Returned, is the "buzz" (the most significant tweet) about that topic. We calculate that by: </br>
+					<ol><li>Counting the frequency of each word in all of the tweets associated with 
+							your topic, excluding words such as "a", "the", etc..</li>
+						<li>Using that frequency, we give each tweet a score. The more words with non-zero frequencies
+							that a tweet has, the higher the score.</li>
+						<li>The buzz-tweet is the tweet with the highest score.</li>
+					</ol>
+				We use DataStore to store all of the tweets and buzz-tweets associated with a topic.</br>
+				We use memcache to store each topic's buzz-tweet. (It is kept for only 1 minute within memcache so
+				that buzzes are always up to date) </br>
+				You can click on Tweet Contents to see all of the tweets about that topic (non-formatted). </br>
             <h3>Please enter the topic:</h3>
             <form action="/findtweets" method="post">
               <div><textarea name="content" rows="3" cols="60"></textarea></div>
@@ -66,10 +83,12 @@ class FindTweets(webapp2.RequestHandler):
 			
 			# the parent key (topic) of the tweet
 			par = Topic(key_name=keyword)
+			# We are using memcache to remember the buzz associated
+			# with each topic. (Assignment spec was ambiguous) 
 			tbuzz = memcache.get('%s:buzz' % keyword)
 			if tbuzz is None:
 				tbuzz = getBuzz(tweetlist)
-				# buzz-ed tweet expires in one minute (60 sec)
+				# Buzz-ed tweet expires in one minute (60 sec)
 				memcache.add('%s:buzz' % keyword, tbuzz, 60)
 			par.store(tbuzz)
 			for t in tweetlist:

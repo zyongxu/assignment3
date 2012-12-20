@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 import urllib
-import simplejson
+import json as simplejson
 import re
 import sys
 #import nltk
