@@ -3,12 +3,12 @@ import webapp2
 
 from google.appengine.ext import db
 
-from search import searchTweets
+from search import searchTweets, getBuzz
 from tweetdb import Tweet, Topic
 
 class MainPage(webapp2.RequestHandler):
-    def get(self):
-        self.response.out.write("""
+	def get(self):
+		self.response.out.write("""
           <html>
           <body>
             <h3>Please enter the topic:</h3>
@@ -18,22 +18,22 @@ class MainPage(webapp2.RequestHandler):
             </form>
             <table border="1">
               <th>Topic</th>
-              <th># of Tweets</th>
-              <th>User</th>""")
+              <th>User</th>
+              <th>Buzz</th>""")
 
-        topics = Topic.all()
-        for buzz in topics:
-            self.response.out.write("""
+		topics = Topic.all()
+		for buzz in topics:
+			self.response.out.write("""
               <tr>
                 <td>%s</td>
-                <td>%s</td>
                 <td>%s<br><img src="%s" /></td>
+                <td>%s</td>
               </tr>""" % (cgi.escape(buzz.topic),
-                          cgi.escape("111"),
                           cgi.escape(buzz.user),
-                          cgi.escape(buzz.photo_url)))
+                          cgi.escape(buzz.photo_url),
+                          cgi.escape(buzz.text)))
               
-        self.response.out.write("""
+		self.response.out.write("""
             </table>
             <form action="/findtweets" method="get">
               <div><input type="submit" value="Tweet Contents"></div>
@@ -43,34 +43,35 @@ class MainPage(webapp2.RequestHandler):
 
 
 class FindTweets(webapp2.RequestHandler):
-    def get(self):
-        """display the text of all tweets in db"""
-        tweets = db.GqlQuery("SELECT * "
-                             "FROM Tweet")
+	def get(self):
+	    """display the text of all tweets in db"""
+	    tweets = db.GqlQuery("SELECT * "
+	                         "FROM Tweet")
+	
+	    for tweet in tweets:
+			self.response.out.write('topic="%s": ' %
+	                                cgi.escape(tweet.parent_key().name()))
+			self.response.out.write('<blockquote>%s</blockquote>' %
+	                                    cgi.escape(tweet.text))
 
-        for tweet in tweets:
-            self.response.out.write('topic="%s": ' %
-                                    cgi.escape(tweet.parent_key().name()))
-            self.response.out.write('<blockquote>%s</blockquote>' %
-                                    cgi.escape(tweet.text))
 
+	def post(self):
+		"""search tweets and populate db"""
+		keywords = cgi.escape(self.request.get('content'))
+		klist = [kw for kw in keywords.split('\n') if kw.strip()]
+		
+		for keyword in klist:
+			tweetlist = searchTweets(keyword)
+			
+			# the parent key (topic) of the tweet
+			par = Topic(key_name=keyword)
+			par.store(getBuzz(tweetlist))
+			for t in tweetlist:
+				tweet = Tweet(parent=par)
+				tweet.store(t)
+			 
 
-    def post(self):
-        """search tweets and populate db"""
-        keywords = cgi.escape(self.request.get('content'))
-        klist = [kw for kw in keywords.split('\n') if kw.strip()]
-
-        for keyword in klist:
-            tweetlist = searchTweets(keyword)
-
-            # the parent key (topic) of the tweet
-            par = Topic(key_name=keyword)
-            par.store(tweetlist[0])
-            for t in tweetlist:
-                tweet = Tweet(parent=par)
-                tweet.store(t)
-            
-        self.redirect('/')
+		self.redirect('/')
 
 
 
