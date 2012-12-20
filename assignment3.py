@@ -2,6 +2,7 @@ import cgi
 import webapp2
 
 from google.appengine.ext import db
+from google.appengine.api import memcache
 
 from search import searchTweets, getBuzz
 from tweetdb import Tweet, Topic
@@ -44,15 +45,15 @@ class MainPage(webapp2.RequestHandler):
 
 class FindTweets(webapp2.RequestHandler):
 	def get(self):
-	    """display the text of all tweets in db"""
-	    tweets = db.GqlQuery("SELECT * "
-	                         "FROM Tweet")
-	
-	    for tweet in tweets:
+		"""display the text of all tweets in db"""
+		tweets = db.GqlQuery("SELECT * "
+		                     "FROM Tweet")
+		
+		for tweet in tweets:
 			self.response.out.write('topic="%s": ' %
-	                                cgi.escape(tweet.parent_key().name()))
+		                            cgi.escape(tweet.parent_key().name()))
 			self.response.out.write('<blockquote>%s</blockquote>' %
-	                                    cgi.escape(tweet.text))
+		                                cgi.escape(tweet.text))
 
 
 	def post(self):
@@ -65,7 +66,12 @@ class FindTweets(webapp2.RequestHandler):
 			
 			# the parent key (topic) of the tweet
 			par = Topic(key_name=keyword)
-			par.store(getBuzz(tweetlist))
+			tbuzz = memcache.get('%s:buzz' % keyword)
+			if tbuzz is None:
+				tbuzz = getBuzz(tweetlist)
+				# buzz-ed tweet expires in one minute (60 sec)
+				memcache.add('%s:buzz' % keyword, tbuzz, 60)
+			par.store(tbuzz)
 			for t in tweetlist:
 				tweet = Tweet(parent=par)
 				tweet.store(t)
